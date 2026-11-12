@@ -61,7 +61,54 @@ public class Demo {
         mostrarFechas("3. Insercion por fecha", insercion);
     }
 
+    public static void probarTiempos(int cantidad) {
+        if (cantidad <= 0) {
+            throw new IllegalArgumentException("La cantidad debe ser mayor que cero");
+        }
+
+        Random aleatorio = new Random(2026);
+        Instant inicio = Instant.parse("2026-01-01T00:00:00Z");
+        Evento[] eventos = new Evento[cantidad];
+        for (int i = 0; i < cantidad; i++) {
+            int id = aleatorio.nextInt(Integer.MAX_VALUE);
+            Instant fecha = inicio.plusSeconds(aleatorio.nextInt(365 * 24 * 60 * 60));
+            int prioridad = aleatorio.nextInt(10);
+            eventos[i] = new Evento(id, fecha, "Evento " + (i + 1), prioridad);
+        }
+
+        Comparator<Evento> fecha = Ordenamientos.POR_FECHA;
+        System.out.printf("%nTiempos para %,d eventos (mediana de 3 pruebas)%n", cantidad);
+        medirTiempo("Burbuja", "fecha", eventos, a -> Ordenamientos.bubble(a, fecha));
+        medirTiempo("Seleccion", "fecha", eventos, a -> Ordenamientos.selection(a, fecha));
+        medirTiempo("Insercion", "fecha", eventos, a -> Ordenamientos.insertion(a, fecha));
+        medirTiempo("Merge", "fecha", eventos, a -> Ordenamientos.merge(a, fecha));
+        medirTiempo("Quick", "fecha", eventos, a -> Ordenamientos.quick(a, fecha));
+        medirTiempo("Heap", "fecha", eventos, a -> Ordenamientos.heap(a, fecha));
+        medirTiempo("Counting", "prioridad", eventos, Ordenamientos::counting);
+        medirTiempo("Radix", "ID", eventos, Ordenamientos::radix);
+        medirTiempo("Bucket", "prioridad", eventos, Ordenamientos::bucket);
+        medirTiempo("Shell", "fecha", eventos, a -> Ordenamientos.shell(a, fecha));
+    }
+
+    private static void medirTiempo(String nombre, String criterio, Evento[] eventos,
+                                    Consumer<Evento[]> ordenar) {
+        ordenar.accept(eventos.clone()); // Calentamiento antes de medir.
+        long[] tiempos = new long[3];
+        for (int i = 0; i < tiempos.length; i++) {
+            Evento[] copia = eventos.clone();
+            long inicio = System.nanoTime();
+            ordenar.accept(copia);
+            tiempos[i] = System.nanoTime() - inicio;
+        }
+        Arrays.sort(tiempos);
+        System.out.printf("%-10s %-10s %10.3f ms%n", nombre, criterio, tiempos[1] / 1_000_000.0);
+    }
+
     public static void main(String[] args) {
+        if (args.length > 0) {
+            probarTiempos(Integer.parseInt(args[0]));
+            return;
+        }
         Comparator<Evento> c = Ordenamientos.POR_PRIORIDAD;
         verificar("Bubble", a -> Ordenamientos.bubble(a,c), c, true);
         verificar("Selection", a -> Ordenamientos.selection(a,c), c, false);
@@ -84,5 +131,6 @@ public class Demo {
         Ordenamientos.counting(ejemplo);
         System.out.println(Arrays.toString(ejemplo));
         ejemplosPorFecha();
+        probarTiempos(10_000);
     }
 }
